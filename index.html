@@ -46,34 +46,57 @@
     </table>
     
     <script>
+        document.addEventListener("DOMContentLoaded", loadTasks);
+        
         function addTask() {
             let taskInput = document.getElementById('taskInput');
             let taskValue = taskInput.value.trim();
             if (taskValue === '') return;
             
-            let table = document.getElementById('taskTable');
-            let row = table.insertRow();
-            let cell1 = row.insertCell(0);
-            let cell2 = row.insertCell(1);
+            let tasks = JSON.parse(localStorage.getItem("tasks")) || [];
+            tasks.push(taskValue);
+            localStorage.setItem("tasks", JSON.stringify(tasks));
             
-            cell1.textContent = taskValue;
-            cell2.innerHTML = `<button onclick="editTask(this)">Edit</button> 
-                               <button onclick="deleteTask(this)">Delete</button>`;
-            
+            renderTasks();
             taskInput.value = '';
         }
         
-        function editTask(button) {
-            let row = button.parentElement.parentElement;
-            let newTask = prompt("Edit Task:", row.cells[0].textContent);
-            if (newTask !== null) row.cells[0].textContent = newTask;
+        function renderTasks() {
+            let table = document.getElementById('taskTable');
+            table.innerHTML = "";
+            let tasks = JSON.parse(localStorage.getItem("tasks")) || [];
+            
+            tasks.forEach((task, index) => {
+                let row = table.insertRow();
+                let cell1 = row.insertCell(0);
+                let cell2 = row.insertCell(1);
+                
+                cell1.textContent = task;
+                cell2.innerHTML = `<button onclick="editTask(${index})">Edit</button> 
+                                   <button onclick="deleteTask(${index})">Delete</button>`;
+            });
         }
         
-        function deleteTask(button) {
-            let row = button.parentElement.parentElement;
-            row.remove();
+        function editTask(index) {
+            let tasks = JSON.parse(localStorage.getItem("tasks")) || [];
+            let newTask = prompt("Edit Task:", tasks[index]);
+            if (newTask !== null) {
+                tasks[index] = newTask;
+                localStorage.setItem("tasks", JSON.stringify(tasks));
+                renderTasks();
+            }
+        }
+        
+        function deleteTask(index) {
+            let tasks = JSON.parse(localStorage.getItem("tasks")) || [];
+            tasks.splice(index, 1);
+            localStorage.setItem("tasks", JSON.stringify(tasks));
+            renderTasks();
+        }
+        
+        function loadTasks() {
+            renderTasks();
         }
     </script>
 </body>
 </html>
-
