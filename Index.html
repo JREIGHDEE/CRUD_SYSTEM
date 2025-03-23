@@ -1,1 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task Manager</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: auto;
+            padding: 20px;
+            text-align: center;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f4f4f4;
+        }
+        button {
+            margin: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h2>Task Manager</h2>
+    <input type="text" id="taskInput" placeholder="Enter task">
+    <button onclick="addTask()">Add Task</button>
+    
+    <table>
+        <thead>
+            <tr>
+                <th>Task</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="taskTable"></tbody>
+    </table>
+    
+    <script>
+        function addTask() {
+            let taskInput = document.getElementById('taskInput');
+            let taskValue = taskInput.value.trim();
+            if (taskValue === '') return;
+            
+            let table = document.getElementById('taskTable');
+            let row = table.insertRow();
+            let cell1 = row.insertCell(0);
+            let cell2 = row.insertCell(1);
+            
+            cell1.textContent = taskValue;
+            cell2.innerHTML = `<button onclick="editTask(this)">Edit</button> 
+                               <button onclick="deleteTask(this)">Delete</button>`;
+            
+            taskInput.value = '';
+        }
+        
+        function editTask(button) {
+            let row = button.parentElement.parentElement;
+            let newTask = prompt("Edit Task:", row.cells[0].textContent);
+            if (newTask !== null) row.cells[0].textContent = newTask;
+        }
+        
+        function deleteTask(button) {
+            let row = button.parentElement.parentElement;
+            row.remove();
+        }
+    </script>
+</body>
+</html>
 
