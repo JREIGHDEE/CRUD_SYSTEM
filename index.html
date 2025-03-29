@@ -25,7 +25,7 @@
         th {
             background-color: #f4f4f4;
         }
-        button {
+        button, input[type="file"] {
             margin: 5px;
         }
     </style>
@@ -34,6 +34,8 @@
     <h2>Task Manager</h2>
     <input type="text" id="taskInput" placeholder="Enter task">
     <button onclick="addTask()">Add Task</button>
+    <button onclick="exportToCSV()">Export CSV</button>
+    <input type="file" id="fileInput" accept=".csv" onchange="importCSV(event)">
     
     <table>
         <thead>
@@ -96,6 +98,34 @@
         
         function loadTasks() {
             renderTasks();
+        }
+        
+        function exportToCSV() {
+            let tasks = JSON.parse(localStorage.getItem("tasks")) || [];
+            let csvContent = "data:text/csv;charset=utf-8,Task\n" + tasks.map(t => t.replace(/,/g, ' ')).join("\n");
+            let encodedUri = encodeURI(csvContent);
+            let link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "tasks.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+        
+        function importCSV(event) {
+            let file = event.target.files[0];
+            if (!file) return;
+            
+            let reader = new FileReader();
+            reader.onload = function(e) {
+                let text = e.target.result;
+                let lines = text.split("\n").slice(1); // Remove header
+                let tasks = lines.map(line => line.trim()).filter(line => line);
+                
+                localStorage.setItem("tasks", JSON.stringify(tasks));
+                renderTasks();
+            };
+            reader.readAsText(file);
         }
     </script>
 </body>
