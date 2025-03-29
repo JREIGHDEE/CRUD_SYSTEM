@@ -1,3 +1,5 @@
+Skip to content
+You said:
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -7,7 +9,203 @@
     <style>
         body {
             font-family: Arial, sans-serif;
-            max-width: 800px;
+            max-width: 600px;
+            margin: auto;
+            padding: 20px;
+            text-align: center;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f4f4f4;
+        }
+        button {
+            margin: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h2>Task Manager</h2>
+    <input type="text" id="taskInput" placeholder="Enter task">
+    <button onclick="addTask()">Add Task</button>
+    
+    <table>
+        <thead>
+            <tr>
+                <th>Task</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="taskTable"></tbody>
+    </table>
+    
+    <script>
+        document.addEventListener("DOMContentLoaded", loadTasks);
+        
+        function addTask() {
+            let taskInput = document.getElementById('taskInput');
+            let taskValue = taskInput.value.trim();
+            if (taskValue === '') return;
+            
+            let tasks = JSON.parse(localStorage.getItem("tasks")) || [];
+            tasks.push(taskValue);
+            localStorage.setItem("tasks", JSON.stringify(tasks));
+            
+            renderTasks();
+            taskInput.value = '';
+        }
+        
+        function renderTasks() {
+            let table = document.getElementById('taskTable');
+            table.innerHTML = "";
+            let tasks = JSON.parse(localStorage.getItem("tasks")) || [];
+            
+            tasks.forEach((task, index) => {
+                let row = table.insertRow();
+                let cell1 = row.insertCell(0);
+                let cell2 = row.insertCell(1);
+                
+                cell1.textContent = task;
+                cell2.innerHTML = <button onclick="editTask(${index})">Edit</button> 
+                                   <button onclick="deleteTask(${index})">Delete</button>;
+            });
+        }
+        
+        function editTask(index) {
+            let tasks = JSON.parse(localStorage.getItem("tasks")) || [];
+            let newTask = prompt("Edit Task:", tasks[index]);
+            if (newTask !== null) {
+                tasks[index] = newTask;
+                localStorage.setItem("tasks", JSON.stringify(tasks));
+                renderTasks();
+            }
+        }
+        
+        function deleteTask(index) {
+            let tasks = JSON.parse(localStorage.getItem("tasks")) || [];
+            tasks.splice(index, 1);
+            localStorage.setItem("tasks", JSON.stringify(tasks));
+            renderTasks();
+        }
+        
+        function loadTasks() {
+            renderTasks();
+        }
+    </script>
+</body>
+</html>
+
+
+
+can you add a system in this crud system so that i can export the tables into csv, and in turn import aswell?
+ChatGPT said:
+I've added CSV export and import functionality to your task manager. The export button will generate a CSV file with your tasks, and the import button will let you upload a CSV file to add tasks.
+
+Now your task manager allows exporting tasks to a CSV file and importing them back from a CSV file. Let me know if you need any refinements! 🚀
+
+You said:
+can you put the delete and edit button justr below the table instead? and not per row? maybe when i select the row it will do the action
+ChatGPT said:
+
+Answer in chat instead
+Now, the delete and edit buttons are positioned below the table, and you can select a row to perform actions on it. Let me know if you need further refinements! 🚀
+
+
+
+
+
+
+
+
+
+
+ChatGPT can make mistakes. Check important info.
+?
+
+
+Task Manager Csv
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+37
+38
+39
+40
+41
+42
+43
+44
+45
+46
+47
+48
+49
+50
+51
+52
+53
+54
+55
+56
+57
+58
+59
+60
+61
+62
+63
+64
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task Manager</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
             margin: auto;
             padding: 20px;
             text-align: center;
@@ -28,17 +226,14 @@
         button, input[type="file"] {
             margin: 5px;
         }
+        tr.selected {
+            background-color: #d3d3d3;
+        }
     </style>
 </head>
 <body>
     <h2>Task Manager</h2>
-    <input type="text" id="taskInput" placeholder="Enter task description">
-    <input type="date" id="dueDate">
-    <select id="taskStatus">
-        <option value="Pending">Pending</option>
-        <option value="In Progress">In Progress</option>
-        <option value="Completed">Completed</option>
-    </select>
+    <input type="text" id="taskInput" placeholder="Enter task">
     <button onclick="addTask()">Add Task</button>
     <button onclick="exportToCSV()">Export CSV</button>
     <input type="file" id="fileInput" accept=".csv" onchange="importCSV(event)">
@@ -46,105 +241,24 @@
     <table>
         <thead>
             <tr>
-                <th>ID</th>
                 <th>Task</th>
-                <th>Status</th>
-                <th>Due Date</th>
-                <th>Actions</th>
             </tr>
         </thead>
         <tbody id="taskTable"></tbody>
     </table>
     
+    <button onclick="editTask()">Edit Selected</button>
+    <button onclick="deleteTask()">Delete Selected</button>
+    
     <script>
         document.addEventListener("DOMContentLoaded", loadTasks);
+        let selectedIndex = null;
         
         function addTask() {
-            let taskInput = document.getElementById('taskInput').value.trim();
-            let dueDate = document.getElementById('dueDate').value;
-            let status = document.getElementById('taskStatus').value;
-            if (taskInput === '') return;
+            let taskInput = document.getElementById('taskInput');
+            let taskValue = taskInput.value.trim();
+            if (taskValue === '') return;
             
             let tasks = JSON.parse(localStorage.getItem("tasks")) || [];
-            let id = tasks.length ? tasks[tasks.length - 1].id + 1 : 1;
-            tasks.push({ id, task: taskInput, status, dueDate });
-            localStorage.setItem("tasks", JSON.stringify(tasks));
-            
-            renderTasks();
-            document.getElementById('taskInput').value = '';
-            document.getElementById('dueDate').value = '';
-        }
-        
-        function renderTasks() {
-            let table = document.getElementById('taskTable');
-            table.innerHTML = "";
-            let tasks = JSON.parse(localStorage.getItem("tasks")) || [];
-            
-            tasks.forEach((task, index) => {
-                let row = table.insertRow();
-                row.insertCell(0).textContent = task.id;
-                row.insertCell(1).textContent = task.task;
-                row.insertCell(2).textContent = task.status;
-                row.insertCell(3).textContent = task.dueDate;
-                row.insertCell(4).innerHTML = `<button onclick="editTask(${index})">Edit</button> 
-                                              <button onclick="deleteTask(${index})">Delete</button>`;
-            });
-        }
-        
-        function editTask(index) {
-            let tasks = JSON.parse(localStorage.getItem("tasks")) || [];
-            let newTask = prompt("Edit Task Description:", tasks[index].task);
-            let newStatus = prompt("Edit Status (Pending, In Progress, Completed):", tasks[index].status);
-            let newDueDate = prompt("Edit Due Date (YYYY-MM-DD):", tasks[index].dueDate);
-            if (newTask !== null) {
-                tasks[index] = { ...tasks[index], task: newTask, status: newStatus, dueDate: newDueDate };
-                localStorage.setItem("tasks", JSON.stringify(tasks));
-                renderTasks();
-            }
-        }
-        
-        function deleteTask(index) {
-            let tasks = JSON.parse(localStorage.getItem("tasks")) || [];
-            tasks.splice(index, 1);
-            localStorage.setItem("tasks", JSON.stringify(tasks));
-            renderTasks();
-        }
-        
-        function loadTasks() {
-            renderTasks();
-        }
-        
-        function exportToCSV() {
-            let tasks = JSON.parse(localStorage.getItem("tasks")) || [];
-            let csvContent = "data:text/csv;charset=utf-8,ID,Task,Status,Due Date\n" +
-                tasks.map(t => `${t.id},${t.task.replace(/,/g, ' ')},${t.status},${t.dueDate}`).join("\n");
-            let encodedUri = encodeURI(csvContent);
-            let link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
-            link.setAttribute("download", "tasks.csv");
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        }
-        
-        function importCSV(event) {
-            let file = event.target.files[0];
-            if (!file) return;
-            
-            let reader = new FileReader();
-            reader.onload = function(e) {
-                let text = e.target.result;
-                let lines = text.split("\n").slice(1);
-                let tasks = lines.map(line => {
-                    let [id, task, status, dueDate] = line.split(",").map(item => item.trim());
-                    return { id: parseInt(id), task, status, dueDate };
-                }).filter(task => task.task);
-                
-                localStorage.setItem("tasks", JSON.stringify(tasks));
-                renderTasks();
-            };
-            reader.readAsText(file);
-        }
-    </script>
-</body>
-</html>
+
+ChatGPT says: Now, the delete and edit buttons are positioned below the table, and you can select a row to perform actions on it. Let me know if you need further refinements! 🚀
