@@ -43,6 +43,7 @@
     <table>
         <thead>
             <tr>
+                <th>ID</th>
                 <th>Task</th>
             </tr>
         </thead>
@@ -62,7 +63,8 @@
             if (taskValue === '') return;
             
             let tasks = JSON.parse(localStorage.getItem("tasks")) || [];
-            tasks.push(taskValue);
+            let newTask = { id: tasks.length + 1, text: taskValue };
+            tasks.push(newTask);
             localStorage.setItem("tasks", JSON.stringify(tasks));
             
             renderTasks();
@@ -76,9 +78,11 @@
             
             tasks.forEach((task, index) => {
                 let row = table.insertRow();
-                let cell = row.insertCell(0);
+                let cell1 = row.insertCell(0);
+                let cell2 = row.insertCell(1);
                 
-                cell.textContent = task;
+                cell1.textContent = task.id;
+                cell2.textContent = task.text;
                 row.onclick = function() { selectRow(index, row); };
             });
         }
@@ -93,9 +97,9 @@
         function editTask() {
             if (selectedIndex === null) return;
             let tasks = JSON.parse(localStorage.getItem("tasks")) || [];
-            let newTask = prompt("Edit Task:", tasks[selectedIndex]);
+            let newTask = prompt("Edit Task:", tasks[selectedIndex].text);
             if (newTask !== null) {
-                tasks[selectedIndex] = newTask;
+                tasks[selectedIndex].text = newTask;
                 localStorage.setItem("tasks", JSON.stringify(tasks));
                 renderTasks();
                 selectedIndex = null;
@@ -106,6 +110,7 @@
             if (selectedIndex === null) return;
             let tasks = JSON.parse(localStorage.getItem("tasks")) || [];
             tasks.splice(selectedIndex, 1);
+            tasks.forEach((task, i) => task.id = i + 1); // Reassign IDs
             localStorage.setItem("tasks", JSON.stringify(tasks));
             renderTasks();
             selectedIndex = null;
@@ -117,7 +122,8 @@
         
         function exportToCSV() {
             let tasks = JSON.parse(localStorage.getItem("tasks")) || [];
-            let csvContent = "data:text/csv;charset=utf-8,Task\n" + tasks.map(t => t.replace(/,/g, ' ')).join("\n");
+            let csvContent = "data:text/csv;charset=utf-8,ID,Task\n" + 
+                tasks.map(t => `${t.id},${t.text.replace(/,/g, ' ')}`).join("\n");
             let encodedUri = encodeURI(csvContent);
             let link = document.createElement("a");
             link.setAttribute("href", encodedUri);
@@ -135,7 +141,10 @@
             reader.onload = function(e) {
                 let text = e.target.result;
                 let lines = text.split("\n").slice(1); // Remove header
-                let tasks = lines.map(line => line.trim()).filter(line => line);
+                let tasks = lines.map((line, index) => {
+                    let taskText = line.split(",").slice(1).join(",").trim();
+                    return { id: index + 1, text: taskText };
+                }).filter(task => task.text);
                 
                 localStorage.setItem("tasks", JSON.stringify(tasks));
                 renderTasks();
