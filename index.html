@@ -7,7 +7,7 @@
     <style>
         body {
             font-family: Arial, sans-serif;
-            max-width: 600px;
+            max-width: 800px;
             margin: auto;
             padding: 20px;
             text-align: center;
@@ -32,7 +32,13 @@
 </head>
 <body>
     <h2>Task Manager</h2>
-    <input type="text" id="taskInput" placeholder="Enter task">
+    <input type="text" id="taskInput" placeholder="Enter task description">
+    <input type="date" id="dueDate">
+    <select id="taskStatus">
+        <option value="Pending">Pending</option>
+        <option value="In Progress">In Progress</option>
+        <option value="Completed">Completed</option>
+    </select>
     <button onclick="addTask()">Add Task</button>
     <button onclick="exportToCSV()">Export CSV</button>
     <input type="file" id="fileInput" accept=".csv" onchange="importCSV(event)">
@@ -40,7 +46,10 @@
     <table>
         <thead>
             <tr>
+                <th>ID</th>
                 <th>Task</th>
+                <th>Status</th>
+                <th>Due Date</th>
                 <th>Actions</th>
             </tr>
         </thead>
@@ -51,16 +60,19 @@
         document.addEventListener("DOMContentLoaded", loadTasks);
         
         function addTask() {
-            let taskInput = document.getElementById('taskInput');
-            let taskValue = taskInput.value.trim();
-            if (taskValue === '') return;
+            let taskInput = document.getElementById('taskInput').value.trim();
+            let dueDate = document.getElementById('dueDate').value;
+            let status = document.getElementById('taskStatus').value;
+            if (taskInput === '') return;
             
             let tasks = JSON.parse(localStorage.getItem("tasks")) || [];
-            tasks.push(taskValue);
+            let id = tasks.length ? tasks[tasks.length - 1].id + 1 : 1;
+            tasks.push({ id, task: taskInput, status, dueDate });
             localStorage.setItem("tasks", JSON.stringify(tasks));
             
             renderTasks();
-            taskInput.value = '';
+            document.getElementById('taskInput').value = '';
+            document.getElementById('dueDate').value = '';
         }
         
         function renderTasks() {
@@ -70,20 +82,22 @@
             
             tasks.forEach((task, index) => {
                 let row = table.insertRow();
-                let cell1 = row.insertCell(0);
-                let cell2 = row.insertCell(1);
-                
-                cell1.textContent = task;
-                cell2.innerHTML = `<button onclick="editTask(${index})">Edit</button> 
-                                   <button onclick="deleteTask(${index})">Delete</button>`;
+                row.insertCell(0).textContent = task.id;
+                row.insertCell(1).textContent = task.task;
+                row.insertCell(2).textContent = task.status;
+                row.insertCell(3).textContent = task.dueDate;
+                row.insertCell(4).innerHTML = `<button onclick="editTask(${index})">Edit</button> 
+                                              <button onclick="deleteTask(${index})">Delete</button>`;
             });
         }
         
         function editTask(index) {
             let tasks = JSON.parse(localStorage.getItem("tasks")) || [];
-            let newTask = prompt("Edit Task:", tasks[index]);
+            let newTask = prompt("Edit Task Description:", tasks[index].task);
+            let newStatus = prompt("Edit Status (Pending, In Progress, Completed):", tasks[index].status);
+            let newDueDate = prompt("Edit Due Date (YYYY-MM-DD):", tasks[index].dueDate);
             if (newTask !== null) {
-                tasks[index] = newTask;
+                tasks[index] = { ...tasks[index], task: newTask, status: newStatus, dueDate: newDueDate };
                 localStorage.setItem("tasks", JSON.stringify(tasks));
                 renderTasks();
             }
@@ -102,7 +116,8 @@
         
         function exportToCSV() {
             let tasks = JSON.parse(localStorage.getItem("tasks")) || [];
-            let csvContent = "data:text/csv;charset=utf-8,Task\n" + tasks.map(t => t.replace(/,/g, ' ')).join("\n");
+            let csvContent = "data:text/csv;charset=utf-8,ID,Task,Status,Due Date\n" +
+                tasks.map(t => `${t.id},${t.task.replace(/,/g, ' ')},${t.status},${t.dueDate}`).join("\n");
             let encodedUri = encodeURI(csvContent);
             let link = document.createElement("a");
             link.setAttribute("href", encodedUri);
@@ -119,8 +134,11 @@
             let reader = new FileReader();
             reader.onload = function(e) {
                 let text = e.target.result;
-                let lines = text.split("\n").slice(1); // Remove header
-                let tasks = lines.map(line => line.trim()).filter(line => line);
+                let lines = text.split("\n").slice(1);
+                let tasks = lines.map(line => {
+                    let [id, task, status, dueDate] = line.split(",").map(item => item.trim());
+                    return { id: parseInt(id), task, status, dueDate };
+                }).filter(task => task.task);
                 
                 localStorage.setItem("tasks", JSON.stringify(tasks));
                 renderTasks();
