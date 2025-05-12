@@ -3,136 +3,302 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Task Manager</title>
+    <title>Database Manager</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <h2>Task Manager</h2>
+    <h2>Database Manager</h2>
     <p>Created by: Denolan, Abellanosa, Palima</p>
-    <input type="text" id="taskInput" placeholder="Enter task">
-    <button onclick="addTask()">Add Task</button>
-    <button onclick="exportToCSV()">Export CSV</button>
-    <input type="file" id="fileInput" accept=".csv" onchange="importCSV(event)">
-    
+
+    <div>
+        <label for="tableSelect">Select Table:</label>
+        <select id="tableSelect" onchange="renderTable()">
+            <option value="User">User</option>
+            <option value="Login">Login</option>
+            <option value="Doctor">Doctor</option>
+            <option value="Patient">Patient</option>
+            <option value="Prescription">Prescription</option>
+            <option value="Medical_Record">Medical Record</Medical_Record>
+            <option value="Appointment">Appointment</option>
+            <option value="Payment">Payment</Payment>
+            <option value="Specialization">Specialization</option>
+            <option value="Specialization_Type">Specialization Type</option>
+        </select>
+    </div>
+
+    <div id="inputForm"></div>
+    <button onclick="addData()">Add Data</button>
+
     <table>
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>Task</th>
-            </tr>
-        </thead>
-        <tbody id="taskTable"></tbody>
+        <thead id="tableHead"></thead>
+        <tbody id="tableBody"></tbody>
     </table>
-    
-    <button onclick="editTask()">Edit</button>
-    <button onclick="deleteTask()">Delete</button>
-    <button onclick="clearTasks()">Clear All</button>
-    
+
+    <button onclick="exportToCSV()">Export CSV</button>
+    <label for="fileInput">Choose File</label>
+    <input type="file" id="fileInput" accept=".csv" onchange="importCSV(event)" style="display:none;">
+    <button onclick="updateData()">Update</button>
+    <button onclick="deleteData()" class="delete">Delete</button>
+    <button onclick="clearTable()">Clear All</button>
+
     <script>
-        document.addEventListener("DOMContentLoaded", loadTasks);
+        let selectedTable = "User";
         let selectedIndex = null;
-        
-        function addTask() {
-            let taskInput = document.getElementById('taskInput');
-            let taskValue = taskInput.value.trim();
-            if (taskValue === '') return;
-            
-            let tasks = JSON.parse(localStorage.getItem("tasks")) || [];
-            let newTask = { id: tasks.length + 1, text: taskValue };
-            tasks.push(newTask);
-            localStorage.setItem("tasks", JSON.stringify(tasks));
-            
-            renderTasks();
-            taskInput.value = '';
+        let currentData = [];
+
+        document.addEventListener("DOMContentLoaded", () => {
+            renderTable();
+        });
+
+        const tableSchemas = {
+            "User": ["User ID", "Login ID"],
+            "Login": ["Login ID", "Role", "Email", "Password"],
+            "Doctor": ["Doctor ID", "First Name", "Last Name", "Specialization ID", "Email", "Availability", "Contact", "User ID"],
+            "Patient": ["Patient ID", "First Name", "Last Name", "Contact #", "Email", "Address", "Date of Birth", "Gender", "User ID"],
+            "Prescription": ["Prescription ID", "Appointment ID", "Doctor ID", "Patient ID", "Medication", "Dosage", "Instructions"],
+            "Medical_Record": ["Record ID", "Patient ID", "Doctor ID", "Appointment ID", "Diagnosis", "Prescription", "Medical Notes"],
+            "Appointment": ["Appointment ID", "Record ID", "Patient ID", "Doctor ID", "Date", "Time", "Status"],
+            "Payment": ["Payment ID", "Patient ID", "Appointment ID", "Payment Date", "Amount", "Status", "Payment Method"],
+            "Specialization": ["Specialization ID", "Specialization Type ID"],
+            "Specialization_Type": ["Specialization Type ID", "Name", "Description"]
+        };
+
+        function renderTable() {
+            selectedTable = document.getElementById("tableSelect").value;
+            renderForm();
+            renderData();
         }
-        
-        function renderTasks() {
-            let table = document.getElementById('taskTable');
-            table.innerHTML = "";
-            let tasks = JSON.parse(localStorage.getItem("tasks")) || [];
-            
-            tasks.forEach((task, index) => {
-                let row = table.insertRow();
-                let cell1 = row.insertCell(0);
-                let cell2 = row.insertCell(1);
-                
-                cell1.textContent = task.id;
-                cell2.textContent = task.text;
-                row.onclick = function() { selectRow(index, row); };
+
+        function renderForm() {
+            let form = document.getElementById("inputForm");
+            form.innerHTML = "";
+            let schema = tableSchemas[selectedTable].slice(1);
+            schema.forEach(attr => {
+                let input = document.createElement("input");
+                input.placeholder = attr;
+                if (attr.includes("Email")) input.type = "email";
+                if (attr.includes("Date")) input.type = "date";
+                input.dataset.key = attr;
+                form.appendChild(input);
             });
         }
-        
-        function selectRow(index, row) {
-            let table = document.getElementById('taskTable');
-            Array.from(table.rows).forEach(r => r.classList.remove('selected'));
-            row.classList.add('selected');
-            selectedIndex = index;
+
+        function renderData() {
+            let tableHead = document.getElementById("tableHead");
+            let tableBody = document.getElementById("tableBody");
+            tableHead.innerHTML = "";
+            tableBody.innerHTML = "";
+
+            let schema = tableSchemas[selectedTable];
+            let headerRow = document.createElement("tr");
+            schema.forEach(attr => {
+                let th = document.createElement("th");
+                th.textContent = attr;
+                headerRow.appendChild(th);
+            });
+            tableHead.appendChild(headerRow);
+
+            currentData = JSON.parse(localStorage.getItem(selectedTable)) || [];
+            currentData.forEach((row, index) => {
+                let tr = document.createElement("tr");
+                schema.forEach(attr => {
+                    let td = document.createElement("td");
+                    td.textContent = row[attr] || "";
+                    tr.appendChild(td);
+                });
+                tr.onclick = () => selectRow(index);
+                tableBody.appendChild(tr);
+            });
         }
-        
-        function editTask() {
-            if (selectedIndex === null) return;
-            let tasks = JSON.parse(localStorage.getItem("tasks")) || [];
-            let newTask = prompt("Edit Task:", tasks[selectedIndex].text);
-            if (newTask !== null) {
-                tasks[selectedIndex].text = newTask;
-                localStorage.setItem("tasks", JSON.stringify(tasks));
-                renderTasks();
-                selectedIndex = null;
+
+        function addData() {
+            let data = JSON.parse(localStorage.getItem(selectedTable)) || [];
+            let schema = tableSchemas[selectedTable];
+            let newRow = {};
+            let allFieldsFilled = true;
+
+            document.querySelectorAll("#inputForm input").forEach((input, index) => {
+                if (!input.value) {
+                    alert("Please fill all fields.");
+                    allFieldsFilled = false;
+                    return;
+                }
+                newRow[schema[index + 1]] = input.value;
+            });
+
+            if (!allFieldsFilled) {
+                return;
+            }
+
+            let idKey = schema[0];
+            if (idKey.includes("ID")) {
+                let maxId = 0;
+                data.forEach(row => {
+                    if (row[idKey] && typeof row[idKey] === 'number' && row[idKey] > maxId) {
+                        maxId = row[idKey];
+                    }
+                });
+                newRow[idKey] = maxId + 1;
+            }
+
+            data.push(newRow);
+            localStorage.setItem(selectedTable, JSON.stringify(data));
+            renderData();
+        }
+
+        function selectRow(index) {
+            selectedIndex = index;
+
+            let schema = tableSchemas[selectedTable].slice(1);
+            let rowData = currentData[index];
+            let inputs = document.querySelectorAll("#inputForm input");
+
+            schema.forEach((attr, i) => {
+                inputs[i].value = rowData[attr] || "";
+            });
+
+            document.querySelectorAll("#tableBody tr").forEach(tr => tr.classList.remove("selected"));
+            let selectedRow = document.querySelectorAll("#tableBody tr")[index];
+            if (selectedRow) {
+                selectedRow.classList.add("selected");
             }
         }
-        
-        function deleteTask() {
-            if (selectedIndex === null) return;
-            let tasks = JSON.parse(localStorage.getItem("tasks")) || [];
-            tasks.splice(selectedIndex, 1);
-            tasks.forEach((task, i) => task.id = i + 1); // Reassign IDs
-            localStorage.setItem("tasks", JSON.stringify(tasks));
-            renderTasks();
+
+        function updateData() {
+            if (selectedIndex === null) {
+                alert("Please select a row to update.");
+                return;
+            }
+
+            let schema = tableSchemas[selectedTable].slice(1);
+            let inputs = document.querySelectorAll("#inputForm input");
+            let updatedRow = {};
+
+            schema.forEach((attr, i) => {
+                updatedRow[attr] = inputs[i].value;
+            });
+
+            let idKey = tableSchemas[selectedTable][0];
+            updatedRow[idKey] = currentData[selectedIndex][idKey];
+
+            currentData[selectedIndex] = updatedRow;
+            localStorage.setItem(selectedTable, JSON.stringify(currentData));
+            renderData();
+            clearInputFields();
+            selectedIndex = null;
+
+        }
+
+        function deleteData() {
+            if (selectedIndex === null) {
+                alert("Please select a row to delete.");
+                return;
+            }
+
+            currentData.splice(selectedIndex, 1);
+            localStorage.setItem(selectedTable, JSON.stringify(currentData));
+            renderData();
+            clearInputFields();
             selectedIndex = null;
         }
-        
-        function clearTasks() {
-            if (confirm("Are you sure you want to clear all tasks?")) {
-                localStorage.removeItem("tasks");
-                renderTasks();
-                selectedIndex = null;
+
+        function clearTable() {
+            if (confirm("Clear all data?")) {
+                localStorage.removeItem(selectedTable);
+                renderData();
             }
         }
-        
-        function loadTasks() {
-            renderTasks();
-        }
-        
+
         function exportToCSV() {
-            let tasks = JSON.parse(localStorage.getItem("tasks")) || [];
-            let csvContent = "data:text/csv;charset=utf-8,ID,Task\n" + 
-                tasks.map(t => `${t.id},${t.text.replace(/,/g, ' ')}`).join("\n");
+            let data = JSON.parse(localStorage.getItem(selectedTable)) || [];
+            let schema = tableSchemas[selectedTable];
+
+            if (data.length === 0) {
+                alert("No data to export.");
+                return;
+            }
+
+            let csvContent = "data:text/csv;charset=utf-8,";
+            csvContent += schema.join(",") + "\r\n";
+
+            data.forEach(item => {
+                let row = schema.map(key => {
+                    let value = item[key];
+                    return value === null || value === undefined ? "" : value;
+                }).join(",");
+                csvContent += row + "\r\n";
+            });
+
             let encodedUri = encodeURI(csvContent);
             let link = document.createElement("a");
             link.setAttribute("href", encodedUri);
-            link.setAttribute("download", "tasks.csv");
+            link.setAttribute("download", selectedTable + ".csv");
             document.body.appendChild(link);
+
             link.click();
             document.body.removeChild(link);
         }
-        
+
+        function clearInputFields() {
+            let inputs = document.querySelectorAll("#inputForm input");
+            inputs.forEach(input => input.value = "");
+        }
+
         function importCSV(event) {
-            let file = event.target.files[0];
-            if (!file) return;
-            
-            let reader = new FileReader();
-            reader.onload = function(e) {
-                let text = e.target.result;
-                let lines = text.split("\n").slice(1); // Remove header
-                let tasks = lines.map((line, index) => {
-                    let taskText = line.split(",").slice(1).join(",").trim();
-                    return { id: index + 1, text: taskText };
-                }).filter(task => task.text);
-                
-                localStorage.setItem("tasks", JSON.stringify(tasks));
-                renderTasks();
-            };
-            reader.readAsText(file);
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    const csvText = e.target.result;
+                    processCSVData(csvText);
+                };
+                reader.readAsText(file);
+            }
+        }
+
+        function processCSVData(csvText) {
+            const schema = tableSchemas[selectedTable];
+            const lines = csvText.split("\r\n");
+            const headers = lines[0].split(",");
+
+            if (!arraysAreEqual(headers, schema)) {
+                alert("CSV headers do not match the table schema.  Import failed.");
+                return;
+            }
+
+            let newData = []; // Create a new array to hold the imported data
+
+            for (let i = 1; i < lines.length; i++) {
+                const values = lines[i].split(",");
+                if (values.length === schema.length) {
+                    let newRow = {};
+                    for (let j = 0; j < schema.length; j++) {
+                        newRow[schema[j]] = values[j];
+                    }
+
+                    // Auto-increment ID logic when import data
+                     let idKey = schema[0];
+                    if (idKey.includes("ID")) {
+                        newRow[idKey] = newData.length + 1;
+                    }
+                    newData.push(newRow);
+                }
+            }
+
+            // Override the old data
+            localStorage.setItem(selectedTable, JSON.stringify(newData));
+
+            // Update currentData and re-render the table
+            currentData = newData;
+            renderData();
+        }
+
+        function arraysAreEqual(arr1, arr2) {
+            if (arr1.length !== arr2.length) return false;
+            for (let i = 0; i < arr1.length; i++) {
+                if (arr1[i] !== arr2[i]) return false;
+            }
+            return true;
         }
     </script>
 </body>
