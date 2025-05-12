@@ -5,6 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Database Manager</title>
     <link rel="stylesheet" href="styles.css">
+    <style>
+        body { font-family: sans-serif; margin: 20px; }
+        table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        input, select, button { margin: 5px; padding: 8px; }
+        button.delete { background-color: #f44336; color: white; }
+        #inputForm input { margin-right: 10px; margin-bottom: 10px; }
+        .selected { background-color: #e6e6e6; }
+        #logTableContainer { margin-top: 40px; }
+        #logTableContainer h3 { margin-bottom: 10px; }
+    </style>
 </head>
 <body>
     <h2>Database Manager</h2>
@@ -18,9 +30,9 @@
             <option value="Doctor">Doctor</option>
             <option value="Patient">Patient</option>
             <option value="Prescription">Prescription</option>
-            <option value="Medical_Record">Medical Record</Medical_Record>
+            <option value="Medical_Record">Medical Record</option>
             <option value="Appointment">Appointment</option>
-            <option value="Payment">Payment</Payment>
+            <option value="Payment">Payment</option>
             <option value="Specialization">Specialization</option>
             <option value="Specialization_Type">Specialization Type</option>
         </select>
@@ -35,19 +47,40 @@
     </table>
 
     <button onclick="exportToCSV()">Export CSV</button>
-    <label for="fileInput">Choose File</label>
+    <label for="fileInput" class="button-like-label">Choose File</label>
     <input type="file" id="fileInput" accept=".csv" onchange="importCSV(event)" style="display:none;">
+    <button onclick="document.getElementById('fileInput').click();">Import CSV</button> <!-- Changed to trigger file input -->
     <button onclick="updateData()">Update</button>
     <button onclick="deleteData()" class="delete">Delete</button>
-    <button onclick="clearTable()">Clear All</button>
+    <button onclick="clearTable()" class="delete">Clear All Table Data</button>
+
+    <!-- Activity Log Section -->
+    <div id="logTableContainer">
+        <h3>Activity Log</h3>
+        <button onclick="clearActivityLog()" class="delete">Clear Activity Log</button>
+        <table>
+            <thead id="logTableHead">
+                <tr>
+                    <th>Timestamp</th>
+                    <th>Action</th>
+                    <th>Table</th>
+                    <th>Details</th>
+                </tr>
+            </thead>
+            <tbody id="logTableBody"></tbody>
+        </table>
+    </div>
+
 
     <script>
         let selectedTable = "User";
         let selectedIndex = null;
         let currentData = [];
+        const ACTIVITY_LOG_KEY = "activityLog";
 
         document.addEventListener("DOMContentLoaded", () => {
             renderTable();
+            renderLogTable(); // Render logs on page load
         });
 
         const tableSchemas = {
@@ -63,8 +96,51 @@
             "Specialization_Type": ["Specialization Type ID", "Name", "Description"]
         };
 
+        // --- LOGGING FUNCTIONS ---
+        function logActivity(action, tableName, details) {
+            const logs = JSON.parse(localStorage.getItem(ACTIVITY_LOG_KEY)) || [];
+            const logEntry = {
+                timestamp: new Date().toISOString(),
+                action: action,
+                tableName: tableName,
+                details: JSON.stringify(details) // Store details as a string for simplicity
+            };
+            logs.unshift(logEntry); // Add to the beginning for newest first
+            localStorage.setItem(ACTIVITY_LOG_KEY, JSON.stringify(logs));
+            renderLogTable();
+        }
+
+        function renderLogTable() {
+            const logTableBody = document.getElementById("logTableBody");
+            logTableBody.innerHTML = "";
+            const logs = JSON.parse(localStorage.getItem(ACTIVITY_LOG_KEY)) || [];
+
+            logs.forEach(log => {
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+                    <td>${new Date(log.timestamp).toLocaleString()}</td>
+                    <td>${log.action}</td>
+                    <td>${log.tableName}</td>
+                    <td><pre>${log.details}</pre></td>
+                `;
+                logTableBody.appendChild(tr);
+            });
+        }
+
+        function clearActivityLog() {
+            if (confirm("Are you sure you want to clear the entire activity log? This cannot be undone.")) {
+                localStorage.removeItem(ACTIVITY_LOG_KEY);
+                logActivity("SYSTEM", "ActivityLog", "Log Cleared"); // Log the log clearing action itself
+                renderLogTable(); // Re-render to show it's empty (or just shows the 'log cleared' entry)
+            }
+        }
+        // --- END LOGGING FUNCTIONS ---
+
+
         function renderTable() {
             selectedTable = document.getElementById("tableSelect").value;
+            selectedIndex = null; // Reset selection when table changes
+            clearInputFields();
             renderForm();
             renderData();
         }
@@ -72,12 +148,15 @@
         function renderForm() {
             let form = document.getElementById("inputForm");
             form.innerHTML = "";
-            let schema = tableSchemas[selectedTable].slice(1);
+            let schema = tableSchemas[selectedTable].slice(1); // Exclude the ID field from the form
             schema.forEach(attr => {
                 let input = document.createElement("input");
                 input.placeholder = attr;
-                if (attr.includes("Email")) input.type = "email";
-                if (attr.includes("Date")) input.type = "date";
+                input.id = `input-${attr.replace(/\s+/g, '-')}`; // For easier selection
+                if (attr.toLowerCase().includes("email")) input.type = "email";
+                else if (attr.toLowerCase().includes("date")) input.type = "date";
+                else if (attr.toLowerCase().includes("password")) input.type = "password";
+                else input.type = "text";
                 input.dataset.key = attr;
                 form.appendChild(input);
             });
@@ -109,6 +188,10 @@
                 tr.onclick = () => selectRow(index);
                 tableBody.appendChild(tr);
             });
+             // Unselect rows visually if currentData is empty or selection is invalid
+            if (selectedIndex === null || selectedIndex >= currentData.length) {
+                document.querySelectorAll("#tableBody tr.selected").forEach(tr => tr.classList.remove("selected"));
+            }
         }
 
         function addData() {
@@ -117,95 +200,111 @@
             let newRow = {};
             let allFieldsFilled = true;
 
-            document.querySelectorAll("#inputForm input").forEach((input, index) => {
-                if (!input.value) {
-                    alert("Please fill all fields.");
+            // Populate based on form inputs (excluding ID)
+            document.querySelectorAll("#inputForm input").forEach((input) => {
+                if (!input.value && input.placeholder !== schema[0]) { // Don't require ID field
+                    alert(`Please fill the field: ${input.placeholder}`);
                     allFieldsFilled = false;
                     return;
                 }
-                newRow[schema[index + 1]] = input.value;
+                newRow[input.dataset.key] = input.value;
             });
 
             if (!allFieldsFilled) {
                 return;
             }
 
+            // Auto-generate ID
             let idKey = schema[0];
-            if (idKey.includes("ID")) {
-                let maxId = 0;
-                data.forEach(row => {
-                    if (row[idKey] && typeof row[idKey] === 'number' && row[idKey] > maxId) {
-                        maxId = row[idKey];
-                    }
-                });
-                newRow[idKey] = maxId + 1;
-            }
+            let maxId = 0;
+            data.forEach(row => {
+                const currentId = parseInt(row[idKey], 10);
+                if (!isNaN(currentId) && currentId > maxId) {
+                    maxId = currentId;
+                }
+            });
+            newRow[idKey] = maxId + 1;
+
 
             data.push(newRow);
             localStorage.setItem(selectedTable, JSON.stringify(data));
+            logActivity("CREATE", selectedTable, newRow); // Log action
             renderData();
+            clearInputFields();
         }
 
         function selectRow(index) {
             selectedIndex = index;
 
-            let schema = tableSchemas[selectedTable].slice(1);
+            let schema = tableSchemas[selectedTable].slice(1); // Form fields exclude ID
             let rowData = currentData[index];
             let inputs = document.querySelectorAll("#inputForm input");
 
             schema.forEach((attr, i) => {
-                inputs[i].value = rowData[attr] || "";
+                if (inputs[i]) { // Ensure input exists
+                    inputs[i].value = rowData[attr] || "";
+                }
             });
 
             document.querySelectorAll("#tableBody tr").forEach(tr => tr.classList.remove("selected"));
-            let selectedRow = document.querySelectorAll("#tableBody tr")[index];
-            if (selectedRow) {
-                selectedRow.classList.add("selected");
+            let selectedRowVisual = document.querySelectorAll("#tableBody tr")[index];
+            if (selectedRowVisual) {
+                selectedRowVisual.classList.add("selected");
             }
         }
 
         function updateData() {
-            if (selectedIndex === null) {
+            if (selectedIndex === null || selectedIndex >= currentData.length) {
                 alert("Please select a row to update.");
                 return;
             }
 
-            let schema = tableSchemas[selectedTable].slice(1);
+            let schema = tableSchemas[selectedTable].slice(1); // Form fields exclude ID
             let inputs = document.querySelectorAll("#inputForm input");
             let updatedRow = {};
+            let oldRow = { ...currentData[selectedIndex] }; // Make a copy of the old data for logging
 
+            // Populate updatedRow from form inputs
             schema.forEach((attr, i) => {
-                updatedRow[attr] = inputs[i].value;
+                if (inputs[i]) { // Ensure input exists
+                    updatedRow[attr] = inputs[i].value;
+                }
             });
 
+            // Preserve the original ID
             let idKey = tableSchemas[selectedTable][0];
             updatedRow[idKey] = currentData[selectedIndex][idKey];
 
             currentData[selectedIndex] = updatedRow;
             localStorage.setItem(selectedTable, JSON.stringify(currentData));
+            logActivity("UPDATE", selectedTable, { old: oldRow, new: updatedRow }); // Log action
             renderData();
             clearInputFields();
             selectedIndex = null;
-
         }
 
         function deleteData() {
-            if (selectedIndex === null) {
+            if (selectedIndex === null || selectedIndex >= currentData.length) {
                 alert("Please select a row to delete.");
                 return;
             }
 
+            const deletedRow = { ...currentData[selectedIndex] }; // Make a copy for logging
             currentData.splice(selectedIndex, 1);
             localStorage.setItem(selectedTable, JSON.stringify(currentData));
+            logActivity("DELETE", selectedTable, deletedRow); // Log action
             renderData();
             clearInputFields();
             selectedIndex = null;
         }
 
         function clearTable() {
-            if (confirm("Clear all data?")) {
+            if (confirm(`Are you sure you want to clear all data from the "${selectedTable}" table? This cannot be undone.`)) {
                 localStorage.removeItem(selectedTable);
+                logActivity("CLEAR_TABLE", selectedTable, { message: `All data removed from table: ${selectedTable}` }); // Log action
                 renderData();
+                clearInputFields();
+                selectedIndex = null;
             }
         }
 
@@ -224,7 +323,12 @@
             data.forEach(item => {
                 let row = schema.map(key => {
                     let value = item[key];
-                    return value === null || value === undefined ? "" : value;
+                    // Escape commas and quotes in values
+                    let cell = value === null || value === undefined ? "" : String(value);
+                    if (cell.includes(",")) {
+                        cell = `"${cell.replace(/"/g, '""')}"`;
+                    }
+                    return cell;
                 }).join(",");
                 csvContent += row + "\r\n";
             });
@@ -237,11 +341,14 @@
 
             link.click();
             document.body.removeChild(link);
+            logActivity("EXPORT_CSV", selectedTable, { filename: `${selectedTable}.csv`, rows: data.length });
         }
 
         function clearInputFields() {
             let inputs = document.querySelectorAll("#inputForm input");
             inputs.forEach(input => input.value = "");
+             document.querySelectorAll("#tableBody tr.selected").forEach(tr => tr.classList.remove("selected"));
+            selectedIndex = null;
         }
 
         function importCSV(event) {
@@ -250,48 +357,81 @@
                 const reader = new FileReader();
                 reader.onload = function (e) {
                     const csvText = e.target.result;
-                    processCSVData(csvText);
+                    processCSVData(csvText, file.name);
                 };
                 reader.readAsText(file);
+                event.target.value = null; // Reset file input
             }
         }
 
-        function processCSVData(csvText) {
+        function processCSVData(csvText, filename) {
             const schema = tableSchemas[selectedTable];
-            const lines = csvText.split("\r\n");
-            const headers = lines[0].split(",");
+            const lines = csvText.trim().split(/\r\n|\n/); // Handle both CRLF and LF
+            if (lines.length < 1) {
+                alert("CSV file is empty or invalid.");
+                return;
+            }
+            const headers = lines[0].split(",").map(h => h.trim().replace(/^"|"$/g, '')); // Trim and remove quotes from headers
+
 
             if (!arraysAreEqual(headers, schema)) {
-                alert("CSV headers do not match the table schema.  Import failed.");
+                alert(`CSV headers do not match the table schema for "${selectedTable}".\nExpected: ${schema.join(", ")}\nFound: ${headers.join(", ")}\nImport failed.`);
                 return;
             }
 
-            let newData = []; // Create a new array to hold the imported data
+            let importedData = [];
+            let currentTableData = JSON.parse(localStorage.getItem(selectedTable)) || [];
+            let maxId = 0;
+             currentTableData.forEach(row => { // Get maxId from existing data
+                const currentId = parseInt(row[schema[0]], 10);
+                if (!isNaN(currentId) && currentId > maxId) {
+                    maxId = currentId;
+                }
+            });
+
 
             for (let i = 1; i < lines.length; i++) {
-                const values = lines[i].split(",");
+                if (lines[i].trim() === "") continue; // Skip empty lines
+                // Basic CSV value parsing (can be improved for complex CSVs with quoted commas)
+                const values = lines[i].split(",").map(v => v.trim().replace(/^"|"$/g, ''));
                 if (values.length === schema.length) {
                     let newRow = {};
                     for (let j = 0; j < schema.length; j++) {
                         newRow[schema[j]] = values[j];
                     }
 
-                    // Auto-increment ID logic when import data
-                     let idKey = schema[0];
-                    if (idKey.includes("ID")) {
-                        newRow[idKey] = newData.length + 1;
+                    // Handle ID: if ID is present and numeric in CSV, use it, otherwise auto-increment
+                    const csvId = parseInt(newRow[schema[0]], 10);
+                    if (isNaN(csvId) || !values[0] ) { // If ID is not a number or not present in CSV
+                        maxId++;
+                        newRow[schema[0]] = maxId;
+                    } else {
+                        newRow[schema[0]] = csvId; // Use CSV ID
+                        if (csvId > maxId) maxId = csvId; // Update maxId if CSV ID is higher
                     }
-                    newData.push(newRow);
+                    importedData.push(newRow);
+                } else {
+                    console.warn(`Skipping line ${i+1} due to incorrect number of columns. Expected ${schema.length}, got ${values.length}`);
                 }
             }
 
-            // Override the old data
-            localStorage.setItem(selectedTable, JSON.stringify(newData));
+            if (importedData.length > 0) {
+                // Option 1: Replace existing data
+                // localStorage.setItem(selectedTable, JSON.stringify(importedData));
+                // currentData = importedData;
 
-            // Update currentData and re-render the table
-            currentData = newData;
-            renderData();
+                // Option 2: Append to existing data (more common for import)
+                currentData = currentData.concat(importedData);
+                localStorage.setItem(selectedTable, JSON.stringify(currentData));
+
+                logActivity("IMPORT_CSV", selectedTable, { filename: filename, importedRows: importedData.length, totalRowsNow: currentData.length });
+                renderData();
+                alert(`${importedData.length} rows imported successfully into "${selectedTable}".`);
+            } else {
+                alert("No valid data rows found in the CSV to import.");
+            }
         }
+
 
         function arraysAreEqual(arr1, arr2) {
             if (arr1.length !== arr2.length) return false;
