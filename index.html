@@ -4,75 +4,84 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Database Manager</title>
-    <link rel="stylesheet" href="styles.css">
-    <style>
-        body { font-family: sans-serif; margin: 20px; }
-        table { border-collapse: collapse; width: 100%; margin-top: 20px; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-        th { background-color: #f2f2f2; }
-        input, select, button { margin: 5px; padding: 8px; }
-        button.delete { background-color: #f44336; color: white; }
-        #inputForm input { margin-right: 10px; margin-bottom: 10px; }
-        .selected { background-color: #e6e6e6; }
-        #logTableContainer { margin-top: 40px; }
-        #logTableContainer h3 { margin-bottom: 10px; }
-    </style>
+    <link rel="stylesheet" href="styles.css"> <!-- Link to your external CSS file -->
 </head>
 <body>
-    <h2>Database Manager</h2>
-    <p>Created by: Denolan, Abellanosa, Palima</p>
+    <div class="container">
+        <h2>Database Manager</h2>
+        <p class="created-by">Created by: Denolan, Abellanosa, Palima</p>
 
-    <div>
-        <label for="tableSelect">Select Table:</label>
-        <select id="tableSelect" onchange="renderTable()">
-            <option value="User">User</option>
-            <option value="Login">Login</option>
-            <option value="Doctor">Doctor</option>
-            <option value="Patient">Patient</option>
-            <option value="Prescription">Prescription</option>
-            <option value="Medical_Record">Medical Record</option>
-            <option value="Appointment">Appointment</option>
-            <option value="Payment">Payment</option>
-            <option value="Specialization">Specialization</option>
-            <option value="Specialization_Type">Specialization Type</option>
-        </select>
-    </div>
+        <div class="table-select-section">
+            <label for="tableSelect">Select Table:</label>
+            <select id="tableSelect" onchange="renderTable()">
+                <option value="User">User</option>
+                <option value="Login">Login</option>
+                <option value="Doctor">Doctor</option>
+                <option value="Patient">Patient</option>
+                <option value="Prescription">Prescription</option>
+                <option value="Medical_Record">Medical Record</option>
+                <option value="Appointment">Appointment</option>
+                <option value="Payment">Payment</option>
+                <option value="Specialization">Specialization</option>
+                <option value="Specialization_Type">Specialization Type</option>
+            </select>
+        </div>
 
-    <div id="inputForm"></div>
-    <button onclick="addData()">Add Data</button>
+        <div id="inputFormContainer">
+            <div id="inputForm">
+                <!-- Inputs will be dynamically generated here -->
+            </div>
+            <button onclick="addData()">Add Data</button>
+        </div>
 
-    <table>
-        <thead id="tableHead"></thead>
-        <tbody id="tableBody"></tbody>
-    </table>
+        <div class="actions-bar">
+            <div class="button-group">
+                <button onclick="exportToCSV()">Export CSV</button>
+                <label for="fileInput" class="button-like-label">Choose File</label>
+                <input type="file" id="fileInput" accept=".csv" onchange="importCSV(event)" style="display:none;">
+                <button onclick="document.getElementById('fileInput').click();">Import CSV</button>
+            </div>
+            <div class="button-group">
+                <button onclick="updateData()">Update</button>
+                <button onclick="deleteData()" class="delete">Delete</button>
+            </div>
+        </div>
 
-    <button onclick="exportToCSV()">Export CSV</button>
-    <label for="fileInput" class="button-like-label">Choose File</label>
-    <input type="file" id="fileInput" accept=".csv" onchange="importCSV(event)" style="display:none;">
-    <button onclick="document.getElementById('fileInput').click();">Import CSV</button> <!-- Changed to trigger file input -->
-    <button onclick="updateData()">Update</button>
-    <button onclick="deleteData()" class="delete">Delete</button>
-    <button onclick="clearTable()" class="delete">Clear All Table Data</button>
+        <div class="table-wrapper">
+            <table>
+                <thead id="tableHead"></thead>
+                <tbody id="tableBody"></tbody>
+            </table>
+        </div>
 
-    <!-- Activity Log Section -->
-    <div id="logTableContainer">
-        <h3>Activity Log</h3>
-        <button onclick="clearActivityLog()" class="delete">Clear Activity Log</button>
-        <table>
-            <thead id="logTableHead">
-                <tr>
-                    <th>Timestamp</th>
-                    <th>Action</th>
-                    <th>Table</th>
-                    <th>Details</th>
-                </tr>
-            </thead>
-            <tbody id="logTableBody"></tbody>
-        </table>
-    </div>
+        <div class="clear-all-table-button-container">
+            <button onclick="clearTable()" class="delete">Clear All Table Data</button>
+        </div>
 
+
+        <div id="logTableContainer">
+            <h3>Activity Log</h3>
+            <div class="clear-log-button-container">
+                <button onclick="clearActivityLog()" class="delete">Clear Activity Log</button>
+            </div>
+            <div class="table-wrapper">
+                <table>
+                    <thead id="logTableHead">
+                        <tr>
+                            <th>Timestamp</th>
+                            <th>Action</th>
+                            <th>Table</th>
+                            <th>Details</th>
+                        </tr>
+                    </thead>
+                    <tbody id="logTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div> <!-- End of .container -->
 
     <script>
+        // Your JavaScript code remains the same
         let selectedTable = "User";
         let selectedIndex = null;
         let currentData = [];
@@ -80,7 +89,7 @@
 
         document.addEventListener("DOMContentLoaded", () => {
             renderTable();
-            renderLogTable(); // Render logs on page load
+            renderLogTable();
         });
 
         const tableSchemas = {
@@ -96,16 +105,15 @@
             "Specialization_Type": ["Specialization Type ID", "Name", "Description"]
         };
 
-        // --- LOGGING FUNCTIONS ---
         function logActivity(action, tableName, details) {
             const logs = JSON.parse(localStorage.getItem(ACTIVITY_LOG_KEY)) || [];
             const logEntry = {
                 timestamp: new Date().toISOString(),
                 action: action,
                 tableName: tableName,
-                details: JSON.stringify(details) // Store details as a string for simplicity
+                details: JSON.stringify(details, null, 2) // Pretty print JSON
             };
-            logs.unshift(logEntry); // Add to the beginning for newest first
+            logs.unshift(logEntry);
             localStorage.setItem(ACTIVITY_LOG_KEY, JSON.stringify(logs));
             renderLogTable();
         }
@@ -130,16 +138,14 @@
         function clearActivityLog() {
             if (confirm("Are you sure you want to clear the entire activity log? This cannot be undone.")) {
                 localStorage.removeItem(ACTIVITY_LOG_KEY);
-                logActivity("SYSTEM", "ActivityLog", "Log Cleared"); // Log the log clearing action itself
-                renderLogTable(); // Re-render to show it's empty (or just shows the 'log cleared' entry)
+                logActivity("SYSTEM", "ActivityLog", "Log Cleared");
+                renderLogTable();
             }
         }
-        // --- END LOGGING FUNCTIONS ---
-
 
         function renderTable() {
             selectedTable = document.getElementById("tableSelect").value;
-            selectedIndex = null; // Reset selection when table changes
+            selectedIndex = null;
             clearInputFields();
             renderForm();
             renderData();
@@ -148,11 +154,11 @@
         function renderForm() {
             let form = document.getElementById("inputForm");
             form.innerHTML = "";
-            let schema = tableSchemas[selectedTable].slice(1); // Exclude the ID field from the form
+            let schema = tableSchemas[selectedTable].slice(1);
             schema.forEach(attr => {
                 let input = document.createElement("input");
                 input.placeholder = attr;
-                input.id = `input-${attr.replace(/\s+/g, '-')}`; // For easier selection
+                input.id = `input-${attr.replace(/\s+/g, '-').replace(/[^\w-]/g, '')}`; // Sanitize ID
                 if (attr.toLowerCase().includes("email")) input.type = "email";
                 else if (attr.toLowerCase().includes("date")) input.type = "date";
                 else if (attr.toLowerCase().includes("password")) input.type = "password";
@@ -188,7 +194,6 @@
                 tr.onclick = () => selectRow(index);
                 tableBody.appendChild(tr);
             });
-             // Unselect rows visually if currentData is empty or selection is invalid
             if (selectedIndex === null || selectedIndex >= currentData.length) {
                 document.querySelectorAll("#tableBody tr.selected").forEach(tr => tr.classList.remove("selected"));
             }
@@ -200,12 +205,10 @@
             let newRow = {};
             let allFieldsFilled = true;
 
-            // Populate based on form inputs (excluding ID)
             document.querySelectorAll("#inputForm input").forEach((input) => {
-                if (!input.value && input.placeholder !== schema[0]) { // Don't require ID field
+                if (!input.value) {
                     alert(`Please fill the field: ${input.placeholder}`);
                     allFieldsFilled = false;
-                    return;
                 }
                 newRow[input.dataset.key] = input.value;
             });
@@ -214,7 +217,6 @@
                 return;
             }
 
-            // Auto-generate ID
             let idKey = schema[0];
             let maxId = 0;
             data.forEach(row => {
@@ -225,28 +227,31 @@
             });
             newRow[idKey] = maxId + 1;
 
-
             data.push(newRow);
             localStorage.setItem(selectedTable, JSON.stringify(data));
-            logActivity("CREATE", selectedTable, newRow); // Log action
+            logActivity("CREATE", selectedTable, newRow);
             renderData();
             clearInputFields();
         }
 
         function selectRow(index) {
+            const previousSelectedRow = document.querySelector("#tableBody tr.selected");
+            if (previousSelectedRow) {
+                previousSelectedRow.classList.remove("selected");
+            }
+
             selectedIndex = index;
 
-            let schema = tableSchemas[selectedTable].slice(1); // Form fields exclude ID
+            let schema = tableSchemas[selectedTable].slice(1);
             let rowData = currentData[index];
             let inputs = document.querySelectorAll("#inputForm input");
 
             schema.forEach((attr, i) => {
-                if (inputs[i]) { // Ensure input exists
+                if (inputs[i]) {
                     inputs[i].value = rowData[attr] || "";
                 }
             });
 
-            document.querySelectorAll("#tableBody tr").forEach(tr => tr.classList.remove("selected"));
             let selectedRowVisual = document.querySelectorAll("#tableBody tr")[index];
             if (selectedRowVisual) {
                 selectedRowVisual.classList.add("selected");
@@ -259,28 +264,25 @@
                 return;
             }
 
-            let schema = tableSchemas[selectedTable].slice(1); // Form fields exclude ID
+            let schema = tableSchemas[selectedTable].slice(1);
             let inputs = document.querySelectorAll("#inputForm input");
             let updatedRow = {};
-            let oldRow = { ...currentData[selectedIndex] }; // Make a copy of the old data for logging
+            let oldRow = { ...currentData[selectedIndex] };
 
-            // Populate updatedRow from form inputs
             schema.forEach((attr, i) => {
-                if (inputs[i]) { // Ensure input exists
+                if (inputs[i]) {
                     updatedRow[attr] = inputs[i].value;
                 }
             });
 
-            // Preserve the original ID
             let idKey = tableSchemas[selectedTable][0];
             updatedRow[idKey] = currentData[selectedIndex][idKey];
 
             currentData[selectedIndex] = updatedRow;
             localStorage.setItem(selectedTable, JSON.stringify(currentData));
-            logActivity("UPDATE", selectedTable, { old: oldRow, new: updatedRow }); // Log action
+            logActivity("UPDATE", selectedTable, { old: oldRow, new: updatedRow });
             renderData();
             clearInputFields();
-            selectedIndex = null;
         }
 
         function deleteData() {
@@ -289,22 +291,20 @@
                 return;
             }
 
-            const deletedRow = { ...currentData[selectedIndex] }; // Make a copy for logging
+            const deletedRow = { ...currentData[selectedIndex] };
             currentData.splice(selectedIndex, 1);
             localStorage.setItem(selectedTable, JSON.stringify(currentData));
-            logActivity("DELETE", selectedTable, deletedRow); // Log action
+            logActivity("DELETE", selectedTable, deletedRow);
             renderData();
             clearInputFields();
-            selectedIndex = null;
         }
 
         function clearTable() {
             if (confirm(`Are you sure you want to clear all data from the "${selectedTable}" table? This cannot be undone.`)) {
                 localStorage.removeItem(selectedTable);
-                logActivity("CLEAR_TABLE", selectedTable, { message: `All data removed from table: ${selectedTable}` }); // Log action
+                logActivity("CLEAR_TABLE", selectedTable, { message: `All data removed from table: ${selectedTable}` });
                 renderData();
                 clearInputFields();
-                selectedIndex = null;
             }
         }
 
@@ -318,14 +318,13 @@
             }
 
             let csvContent = "data:text/csv;charset=utf-8,";
-            csvContent += schema.join(",") + "\r\n";
+            csvContent += schema.map(h => `"${String(h).replace(/"/g, '""')}"`).join(",") + "\r\n";
 
             data.forEach(item => {
                 let row = schema.map(key => {
                     let value = item[key];
-                    // Escape commas and quotes in values
                     let cell = value === null || value === undefined ? "" : String(value);
-                    if (cell.includes(",")) {
+                    if (cell.includes(",") || cell.includes("\"") || cell.includes("\n")) {
                         cell = `"${cell.replace(/"/g, '""')}"`;
                     }
                     return cell;
@@ -338,16 +337,17 @@
             link.setAttribute("href", encodedUri);
             link.setAttribute("download", selectedTable + ".csv");
             document.body.appendChild(link);
-
             link.click();
             document.body.removeChild(link);
             logActivity("EXPORT_CSV", selectedTable, { filename: `${selectedTable}.csv`, rows: data.length });
         }
 
         function clearInputFields() {
-            let inputs = document.querySelectorAll("#inputForm input");
-            inputs.forEach(input => input.value = "");
-             document.querySelectorAll("#tableBody tr.selected").forEach(tr => tr.classList.remove("selected"));
+            document.querySelectorAll("#inputForm input").forEach(input => input.value = "");
+            const selectedRowVisual = document.querySelector("#tableBody tr.selected");
+            if (selectedRowVisual) {
+                selectedRowVisual.classList.remove("selected");
+            }
             selectedIndex = null;
         }
 
@@ -360,19 +360,18 @@
                     processCSVData(csvText, file.name);
                 };
                 reader.readAsText(file);
-                event.target.value = null; // Reset file input
+                event.target.value = null;
             }
         }
 
         function processCSVData(csvText, filename) {
             const schema = tableSchemas[selectedTable];
-            const lines = csvText.trim().split(/\r\n|\n/); // Handle both CRLF and LF
+            const lines = csvText.trim().split(/\r\n|\n/);
             if (lines.length < 1) {
                 alert("CSV file is empty or invalid.");
                 return;
             }
-            const headers = lines[0].split(",").map(h => h.trim().replace(/^"|"$/g, '')); // Trim and remove quotes from headers
-
+            const headers = lines[0].split(",").map(h => h.trim().replace(/^"|"$/g, ''));
 
             if (!arraysAreEqual(headers, schema)) {
                 alert(`CSV headers do not match the table schema for "${selectedTable}".\nExpected: ${schema.join(", ")}\nFound: ${headers.join(", ")}\nImport failed.`);
@@ -382,17 +381,15 @@
             let importedData = [];
             let currentTableData = JSON.parse(localStorage.getItem(selectedTable)) || [];
             let maxId = 0;
-             currentTableData.forEach(row => { // Get maxId from existing data
+            currentTableData.forEach(row => {
                 const currentId = parseInt(row[schema[0]], 10);
                 if (!isNaN(currentId) && currentId > maxId) {
                     maxId = currentId;
                 }
             });
 
-
             for (let i = 1; i < lines.length; i++) {
-                if (lines[i].trim() === "") continue; // Skip empty lines
-                // Basic CSV value parsing (can be improved for complex CSVs with quoted commas)
+                if (lines[i].trim() === "") continue;
                 const values = lines[i].split(",").map(v => v.trim().replace(/^"|"$/g, ''));
                 if (values.length === schema.length) {
                     let newRow = {};
@@ -400,43 +397,35 @@
                         newRow[schema[j]] = values[j];
                     }
 
-                    // Handle ID: if ID is present and numeric in CSV, use it, otherwise auto-increment
                     const csvId = parseInt(newRow[schema[0]], 10);
-                    if (isNaN(csvId) || !values[0] ) { // If ID is not a number or not present in CSV
+                    if (isNaN(csvId) || !values[0] ) {
                         maxId++;
                         newRow[schema[0]] = maxId;
                     } else {
-                        newRow[schema[0]] = csvId; // Use CSV ID
-                        if (csvId > maxId) maxId = csvId; // Update maxId if CSV ID is higher
+                        newRow[schema[0]] = csvId;
+                        if (csvId > maxId) maxId = csvId;
                     }
                     importedData.push(newRow);
                 } else {
-                    console.warn(`Skipping line ${i+1} due to incorrect number of columns. Expected ${schema.length}, got ${values.length}`);
+                    console.warn(`Skipping line ${i+1} in CSV "${filename}" due to incorrect number of columns. Expected ${schema.length}, got ${values.length}. Line: "${lines[i]}"`);
                 }
             }
 
             if (importedData.length > 0) {
-                // Option 1: Replace existing data
-                // localStorage.setItem(selectedTable, JSON.stringify(importedData));
-                // currentData = importedData;
-
-                // Option 2: Append to existing data (more common for import)
                 currentData = currentData.concat(importedData);
                 localStorage.setItem(selectedTable, JSON.stringify(currentData));
-
                 logActivity("IMPORT_CSV", selectedTable, { filename: filename, importedRows: importedData.length, totalRowsNow: currentData.length });
                 renderData();
                 alert(`${importedData.length} rows imported successfully into "${selectedTable}".`);
             } else {
-                alert("No valid data rows found in the CSV to import.");
+                alert("No valid data rows found in the CSV to import, or all rows had issues.");
             }
         }
-
 
         function arraysAreEqual(arr1, arr2) {
             if (arr1.length !== arr2.length) return false;
             for (let i = 0; i < arr1.length; i++) {
-                if (arr1[i] !== arr2[i]) return false;
+                if (arr1[i].trim() !== arr2[i].trim()) return false;
             }
             return true;
         }
